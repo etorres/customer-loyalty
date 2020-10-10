@@ -74,7 +74,7 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
             itemWithPromotionGen(itemId, quantity)
           )
     }
-    shoppingCartItemsMaybeWithPromotion <- itemsWithPromotion.traverse {
+    shoppingCartItemsMaybeWithPromotion <- itemsMaybeWithPromotion.traverse {
       case (itemId, quantity) =>
         Gen
           .containerOf[List, (ItemId, (SomeQuantity, List[PromotionalOffer]))](
