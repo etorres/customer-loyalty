@@ -7,6 +7,7 @@ import cats.implicits._
 import es.eriktorr.loyalty.checkout.domain.{
   ShoppingCart,
   ShoppingCartId,
+  ShoppingCartRepository,
   ShoppingCartWithPromotions
 }
 import es.eriktorr.loyalty.checkout.infrastructure.CheckoutGenerators.{
@@ -16,6 +17,7 @@ import es.eriktorr.loyalty.checkout.infrastructure.CheckoutGenerators.{
 import es.eriktorr.loyalty.checkout.infrastructure.FakeShoppingCartRepository
 import es.eriktorr.loyalty.core.domain._
 import es.eriktorr.loyalty.core.infrastructure.CoreGenerators._
+import es.eriktorr.loyalty.incentives.domain.{EligibilityEngine, RewardCatalog}
 import es.eriktorr.loyalty.incentives.infrastructure.{FakeEligibilityEngine, FakeRewardCatalog}
 import org.scalacheck._
 import org.scalacheck.cats.implicits._
@@ -59,48 +61,65 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
     eligibleShoppingCartItems ++ notEligibleShoppingCartItems
   )
 
-  simpleTest("Add eligible campaigns to shopping cart") {
-    forall(gen) { testCase =>
-      val addCampaignsToShoppingCart = AddCampaignsToShoppingCart
-        .impl[IO](
-          new FakeEligibilityEngine(
-            Ref.unsafe[IO, Map[UserId, List[PromotionalOffer]]](
-              Map(testCase.userId -> testCase.eligibleShoppingCartItems.flatMap {
-                case (_, (_, promotionalOffers)) => promotionalOffers
-              })
-            )
-          ),
-          new FakeRewardCatalog(Ref.unsafe[IO, RewardCampaigns](testCase.allShoppingCartItems.map {
-            case (itemId, (_, promotionalOffers)) => (itemId, promotionalOffers)
-          }.toMap)),
-          new FakeShoppingCartRepository(
-            Ref.unsafe[IO, Map[UserId, ShoppingCart]](
-              Map(
-                testCase.userId -> ShoppingCart(
-                  shoppingCartId = testCase.shoppingCartId,
-                  userId = testCase.userId.some,
-                  shoppingCartItems = testCase.allShoppingCartItems.map {
-                    case (itemId, (quantity, _)) => (itemId, quantity)
-                  }.toMap
-                )
-              )
+  private[this] def forAllTestCases(
+    addCampaignsToShoppingCartFrom: (
+      EligibilityEngine[IO],
+      RewardCatalog[IO],
+      ShoppingCartRepository[IO]
+    ) => AddCampaignsToShoppingCart[IO]
+  ) = forall(gen) { testCase =>
+    val addCampaignsToShoppingCart = addCampaignsToShoppingCartFrom(
+      new FakeEligibilityEngine(
+        Ref.unsafe[IO, Map[UserId, List[PromotionalOffer]]](
+          Map(testCase.userId -> testCase.eligibleShoppingCartItems.flatMap {
+            case (_, (_, promotionalOffers)) => promotionalOffers
+          })
+        )
+      ),
+      new FakeRewardCatalog(Ref.unsafe[IO, RewardCampaigns](testCase.allShoppingCartItems.map {
+        case (itemId, (_, promotionalOffers)) => (itemId, promotionalOffers)
+      }.toMap)),
+      new FakeShoppingCartRepository(
+        Ref.unsafe[IO, Map[UserId, ShoppingCart]](
+          Map(
+            testCase.userId -> ShoppingCart(
+              shoppingCartId = testCase.shoppingCartId,
+              userId = testCase.userId.some,
+              shoppingCartItems = testCase.allShoppingCartItems.map {
+                case (itemId, (quantity, _)) => (itemId, quantity)
+              }.toMap
             )
           )
         )
-      for {
-        shoppingCartWithPromotions <- addCampaignsToShoppingCart.shoppingCartWithPromotionsFor(
-          testCase.userId
-        )
-      } yield expect(
-        shoppingCartWithPromotions == ShoppingCartWithPromotions(
-          testCase.shoppingCartId,
-          testCase.userId.some,
-          testCase.eligibleShoppingCartItems.toMap ++ testCase.notEligibleShoppingCartItems.map {
-            case (itemId, (quantity, _)) => (itemId, (quantity, List.empty))
-          }
-        ).some
       )
-    }
+    )
+    for {
+      shoppingCartWithPromotions <- addCampaignsToShoppingCart.shoppingCartWithPromotionsFor(
+        testCase.userId
+      )
+    } yield expect(
+      shoppingCartWithPromotions == ShoppingCartWithPromotions(
+        testCase.shoppingCartId,
+        testCase.userId.some,
+        testCase.eligibleShoppingCartItems.toMap ++ testCase.notEligibleShoppingCartItems.map {
+          case (itemId, (quantity, _)) => (itemId, (quantity, List.empty))
+        }
+      ).some
+    )
+  }
+
+  simpleTest("Add eligible campaigns to shopping cart") {
+    forAllTestCases((eligibilityEngine, rewardCatalog, shoppingCartRepository) =>
+      AddCampaignsToShoppingCart
+        .impl[IO](eligibilityEngine, rewardCatalog, shoppingCartRepository)
+    )
+  }
+
+  simpleTest("Add eligible campaigns to shopping cart using MTL") {
+    forAllTestCases((eligibilityEngine, rewardCatalog, shoppingCartRepository) =>
+      AddCampaignsToShoppingCart
+        .implT[IO](eligibilityEngine, rewardCatalog, shoppingCartRepository)
+    )
   }
 }
 

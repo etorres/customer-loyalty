@@ -7,4 +7,6 @@ trait AddCampaignsToShoppingCart[F[_]] {
   def shoppingCartWithPromotionsFor(userId: UserId): F[Option[ShoppingCartWithPromotions]]
 }
 
-object AddCampaignsToShoppingCart extends AddCampaignsToShoppingCartImpl
+object AddCampaignsToShoppingCart
+    extends AddCampaignsToShoppingCartImpl
+    with AddCampaignsToShoppingCartImplT
