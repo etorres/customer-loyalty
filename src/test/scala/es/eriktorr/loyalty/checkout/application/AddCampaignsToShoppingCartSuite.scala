@@ -4,9 +4,19 @@ import cats._
 import cats.effect._
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import es.eriktorr.loyalty.checkout.domain.{ShoppingCartId, ShoppingCartWithPromotions}
+import es.eriktorr.loyalty.checkout.domain.{
+  ShoppingCart,
+  ShoppingCartId,
+  ShoppingCartWithPromotions
+}
 import es.eriktorr.loyalty.checkout.infrastructure.FakeShoppingCartRepository
-import es.eriktorr.loyalty.core.domain.{ItemId, PromotionalOffer, SomeQuantity, UserId}
+import es.eriktorr.loyalty.core.domain.{
+  ItemId,
+  PromotionalOffer,
+  RewardCampaigns,
+  SomeQuantity,
+  UserId
+}
 import es.eriktorr.loyalty.core.domain.PromotionalOffer._
 import es.eriktorr.loyalty.incentives.infrastructure.{FakeEligibilityEngine, FakeRewardCatalog}
 import eu.timepit.refined.api.Refined.unsafeApply
@@ -47,27 +57,37 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
       promotionalOffers <- Gen.nonEmptyContainerOf[List, PromotionalOffer](promotionGen)
     } yield (itemId, (quantity, promotionalOffers))
 
+  private[this] def itemMaybeWithPromotionGen(itemId: ItemId, quantity: SomeQuantity) =
+    for {
+      promotionalOffers <- Gen.containerOf[List, PromotionalOffer](promotionGen)
+    } yield (itemId, (quantity, promotionalOffers))
+
   private[this] val gen = for {
     userId <- userIdGen
     shoppingCartId <- shoppingCartIdGen
     shoppingCartItems <- Gen.containerOfN[List, (ItemId, SomeQuantity)](10, shoppingCartItemGen)
-    (itemsWithPromotion, itemsWithoutPromotion) = shoppingCartItems.splitAt(3)
-    generatedShoppingCartItemsWithPromotion <- itemsWithPromotion.traverse {
+    (itemsWithPromotion, itemsMaybeWithPromotion) = shoppingCartItems.splitAt(3)
+    shoppingCartItemsWithPromotion <- itemsWithPromotion.traverse {
       case (itemId, quantity) =>
         Gen
           .containerOf[List, (ItemId, (SomeQuantity, List[PromotionalOffer]))](
             itemWithPromotionGen(itemId, quantity)
           )
     }
-    shoppingCartItemsWithPromotion = generatedShoppingCartItemsWithPromotion.flatten
-    shoppingCartItemsWithoutPromotion = itemsWithoutPromotion.map {
-      case (itemId, quantity) => (itemId, (quantity, List.empty[PromotionalOffer]))
+    shoppingCartItemsMaybeWithPromotion <- itemsWithPromotion.traverse {
+      case (itemId, quantity) =>
+        Gen
+          .containerOf[List, (ItemId, (SomeQuantity, List[PromotionalOffer]))](
+            itemMaybeWithPromotionGen(itemId, quantity)
+          )
     }
+    eligibleShoppingCartItems = shoppingCartItemsWithPromotion.flatten
+    notEligibleShoppingCartItems = shoppingCartItemsMaybeWithPromotion.flatten
   } yield TestCase(
     userId,
     shoppingCartId,
-    shoppingCartItemsWithPromotion,
-    shoppingCartItemsWithPromotion ++ shoppingCartItemsWithoutPromotion
+    eligibleShoppingCartItems,
+    eligibleShoppingCartItems ++ notEligibleShoppingCartItems
   )
 
   simpleTest("Add eligible campaigns to shopping cart") {
@@ -76,13 +96,27 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
         .impl[IO](
           new FakeEligibilityEngine(
             Ref.unsafe[IO, Map[UserId, List[PromotionalOffer]]](
-              Map(testCase.userId -> testCase.shoppingCartItemsWithPromotion.flatMap {
+              Map(testCase.userId -> testCase.eligibleShoppingCartItems.flatMap {
                 case (_, (_, promotionalOffers)) => promotionalOffers
               })
             )
           ),
-          new FakeRewardCatalog,
-          new FakeShoppingCartRepository
+          new FakeRewardCatalog(Ref.unsafe[IO, RewardCampaigns](testCase.allShoppingCartItems.map {
+            case (itemId, (_, promotionalOffers)) => (itemId, promotionalOffers)
+          }.toMap)),
+          new FakeShoppingCartRepository(
+            Ref.unsafe[IO, Map[UserId, ShoppingCart]](
+              Map(
+                testCase.userId -> ShoppingCart(
+                  shoppingCartId = testCase.shoppingCartId,
+                  userId = testCase.userId.some,
+                  shoppingCartItems = testCase.allShoppingCartItems.map {
+                    case (itemId, (quantity, _)) => (itemId, quantity)
+                  }.toMap
+                )
+              )
+            )
+          )
         )
       for {
         shoppingCartWithPromotions <- addCampaignsToShoppingCart.shoppingCartWithPromotionsFor(
@@ -92,7 +126,7 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
         shoppingCartWithPromotions == ShoppingCartWithPromotions(
           testCase.shoppingCartId,
           testCase.userId.some,
-          testCase.shoppingCartItemsWithPromotion.toMap
+          testCase.eligibleShoppingCartItems.toMap
         ).some
       )
     }
@@ -102,6 +136,6 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
 final case class TestCase(
   userId: UserId,
   shoppingCartId: ShoppingCartId,
-  shoppingCartItemsWithPromotion: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))],
+  eligibleShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))],
   allShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))]
 )

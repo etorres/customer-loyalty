@@ -1,11 +1,15 @@
 package es.eriktorr.loyalty.checkout.infrastructure
 
 import cats.effect._
-import cats.implicits._
+import cats.effect.concurrent.Ref
 import es.eriktorr.loyalty.checkout.domain._
-import es.eriktorr.loyalty.core.domain
+import es.eriktorr.loyalty.core.domain.UserId
 
-final class FakeShoppingCartRepository extends ShoppingCartRepository[IO] {
-  override def shoppingCartFor(userId: domain.UserId): IO[Option[ShoppingCart]] =
-    IO.pure(none[ShoppingCart])
+final class FakeShoppingCartRepository(val ref: Ref[IO, Map[UserId, ShoppingCart]])
+    extends ShoppingCartRepository[IO] {
+  override def shoppingCartFor(userId: UserId): IO[Option[ShoppingCart]] =
+    for {
+      shoppingCarts <- ref.get
+      shoppingCartForUserId = shoppingCarts.get(userId)
+    } yield shoppingCartForUserId
 }
