@@ -33,6 +33,8 @@ libraryDependencies ++= Seq(
   "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test
 )
 
+dependencyOverrides += "org.typelevel" %% "cats-core" % catsCoreVersion
+
 scalacOptions ++= Seq(
   "-encoding",
   "utf8",

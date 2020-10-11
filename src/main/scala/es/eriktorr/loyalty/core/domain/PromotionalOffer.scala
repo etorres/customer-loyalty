@@ -8,7 +8,7 @@ sealed trait MoreOfTheSame {
   val discountOnAdditionalItems: Dimensionless = 0.percent
 }
 
-sealed trait PromotionalOffer extends Product with Serializable with MoreOfTheSame
+sealed trait PromotionalOffer extends MoreOfTheSame with Product with Serializable
 
 object PromotionalOffer {
   case object FreeDelivery extends PromotionalOffer
