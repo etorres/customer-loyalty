@@ -4,22 +4,22 @@ import squants.Dimensionless
 import squants.DimensionlessConversions._
 import squants.market.Money
 
-sealed abstract class PromotionalOffer extends Product with Serializable
+sealed trait MoreOfTheSame {
+  val discountOnAdditionalItems: Dimensionless = 0.percent
+}
+
+sealed trait PromotionalOffer extends Product with Serializable with MoreOfTheSame
 
 object PromotionalOffer {
-  sealed trait MoreOfTheSame extends PromotionalOffer {
-    val discountOnAdditionalItems: Dimensionless = 0.percent
-  }
-
   case object FreeDelivery extends PromotionalOffer
 
   final case class FreeSamples(itemIds: ItemIds) extends PromotionalOffer
 
-  case object BuyOneGetOneFree extends MoreOfTheSame {
+  case object BuyOneGetOneFree extends PromotionalOffer {
     override val discountOnAdditionalItems: Dimensionless = 100.percent
   }
 
-  case object BuyOneGetOneHalfPrice extends MoreOfTheSame {
+  case object BuyOneGetOneHalfPrice extends PromotionalOffer {
     override val discountOnAdditionalItems: Dimensionless = 50.percent
   }
 
