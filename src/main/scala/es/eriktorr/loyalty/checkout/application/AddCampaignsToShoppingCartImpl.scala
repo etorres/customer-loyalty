@@ -38,7 +38,7 @@ trait AddCampaignsToShoppingCartImpl {
                     )
               }
               .toList
-              .traverse(identity)
+              .sequence
             itemsWithPromotions = shoppingCart.shoppingCartItems.map {
               case (itemId, quantity) =>
                 (
