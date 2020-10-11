@@ -18,10 +18,10 @@ object CoreGenerators {
     promotionalOffers: List[PromotionalOffer]
   ): Gen[(ItemId, (SomeQuantity, List[PromotionalOffer]))] =
     for {
-      promotionalOffers <- Gen.nonEmptyContainerOf[List, PromotionalOffer](
+      promotionalOffers <- Gen.nonEmptyContainerOf[Set, PromotionalOffer](
         Gen.oneOf(promotionalOffers)
       )
-    } yield (itemId, (quantity, promotionalOffers))
+    } yield (itemId, (quantity, promotionalOffers.toList))
 
   def itemMaybeWithPromotionGen(
     itemId: ItemId,
@@ -29,8 +29,8 @@ object CoreGenerators {
     promotionalOffers: List[PromotionalOffer]
   ): Gen[(ItemId, (SomeQuantity, List[PromotionalOffer]))] =
     for {
-      promotionalOffers <- Gen.containerOf[List, PromotionalOffer](Gen.oneOf(promotionalOffers))
-    } yield (itemId, (quantity, promotionalOffers))
+      promotionalOffers <- Gen.containerOf[Set, PromotionalOffer](Gen.oneOf(promotionalOffers))
+    } yield (itemId, (quantity, promotionalOffers.toList))
 
   val promotionOffersGen: Gen[List[PromotionalOffer]] = Gen.const(
     List(
