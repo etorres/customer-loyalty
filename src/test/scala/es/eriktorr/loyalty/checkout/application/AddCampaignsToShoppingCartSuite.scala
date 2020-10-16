@@ -39,20 +39,13 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
       .shuffle(allPromotionOffers)
       .splitAt(3)
     (itemsWithPromotion, itemsMaybeWithPromotion) = shoppingCartItems.splitAt(3)
-    shoppingCartItemsWithEligiblePromotions <- itemsWithPromotion.traverse {
-      case (itemId, quantity) =>
-        Gen.containerOf[List, (ItemId, (SomeQuantity, List[PromotionalOffer]))](
-          itemWithPromotionGen(itemId, quantity, eligiblePromotionOffers)
-        )
+    eligibleShoppingCartItems <- itemsWithPromotion.traverse {
+      case (itemId, quantity) => itemWithPromotionGen(itemId, quantity, eligiblePromotionOffers)
     }
-    shoppingCartItemsMaybeWithNotEligiblePromotions <- itemsMaybeWithPromotion.traverse {
+    notEligibleShoppingCartItems <- itemsMaybeWithPromotion.traverse {
       case (itemId, quantity) =>
-        Gen.containerOf[List, (ItemId, (SomeQuantity, List[PromotionalOffer]))](
-          itemMaybeWithPromotionGen(itemId, quantity, notEligiblePromotionOffers)
-        )
+        itemMaybeWithPromotionGen(itemId, quantity, notEligiblePromotionOffers)
     }
-    eligibleShoppingCartItems = shoppingCartItemsWithEligiblePromotions.flatten
-    notEligibleShoppingCartItems = shoppingCartItemsMaybeWithNotEligiblePromotions.flatten
   } yield TestCase(
     userId,
     shoppingCartId,
