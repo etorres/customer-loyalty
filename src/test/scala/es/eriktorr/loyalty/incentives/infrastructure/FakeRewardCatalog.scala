@@ -2,6 +2,8 @@ package es.eriktorr.loyalty.incentives.infrastructure
 
 import cats.effect._
 import cats.effect.concurrent.Ref
+import cats.implicits._
+import es.eriktorr.loyalty.core.domain.NewTypeInstances._
 import es.eriktorr.loyalty.core.domain._
 import es.eriktorr.loyalty.incentives.domain._
 
@@ -10,7 +12,7 @@ final class FakeRewardCatalog(val ref: Ref[IO, RewardCampaigns]) extends RewardC
     for {
       rewardCampaigns <- ref.get
       rewardCampaignsForItemIds = rewardCampaigns.filter {
-        case (itemId, _) => itemIds.contains(itemId)
+        case (itemId, _) => itemIds.contains_(itemId)
       }
     } yield rewardCampaignsForItemIds
 }

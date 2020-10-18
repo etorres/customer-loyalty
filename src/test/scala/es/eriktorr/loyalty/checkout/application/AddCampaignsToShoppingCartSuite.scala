@@ -19,6 +19,7 @@ import es.eriktorr.loyalty.core.domain._
 import es.eriktorr.loyalty.core.infrastructure.CoreGenerators._
 import es.eriktorr.loyalty.incentives.domain.{EligibilityEngine, RewardCatalog}
 import es.eriktorr.loyalty.incentives.infrastructure.{FakeEligibilityEngine, FakeRewardCatalog}
+import es.eriktorr.loyalty.shared.infrastructure.GeneratorSyntax._
 import org.scalacheck._
 import org.scalacheck.cats.implicits._
 import weaver._
@@ -29,7 +30,7 @@ import scala.util.Random
 object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
   implicit val showItemId: Show[TestCase] = Show.show(_.toString)
 
-  private[this] val gen = for {
+  private[this] val gen = (for {
     userId <- userIdGen
     shoppingCartId <- shoppingCartIdGen
     shoppingCartItems <- Gen
@@ -52,7 +53,7 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
     eligibleShoppingCartItems,
     notEligibleShoppingCartItems,
     eligibleShoppingCartItems ++ notEligibleShoppingCartItems
-  )
+  )).sampleWithSeed("AddCampaignsToShoppingCartSuite")
 
   private[this] def forAllTestCases(
     addCampaignsToShoppingCartFrom: (
