@@ -28,6 +28,14 @@ import weaver.scalacheck._
 import scala.util.Random
 
 object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
+  final case class TestCase(
+    userId: UserId,
+    shoppingCartId: ShoppingCartId,
+    eligibleShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))],
+    notEligibleShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))],
+    allShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))]
+  )
+
   implicit val showItemId: Show[TestCase] = Show.show(_.toString)
 
   private[this] val gen = (for {
@@ -116,11 +124,3 @@ object AddCampaignsToShoppingCartSuite extends SimpleIOSuite with IOCheckers {
     )
   }
 }
-
-final case class TestCase(
-  userId: UserId,
-  shoppingCartId: ShoppingCartId,
-  eligibleShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))],
-  notEligibleShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))],
-  allShoppingCartItems: List[(ItemId, (SomeQuantity, List[PromotionalOffer]))]
-)

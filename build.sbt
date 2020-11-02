@@ -14,9 +14,9 @@ val catsCoreVersion = "2.2.0"
 val catsEffectsVersion = "2.2.0"
 val catsScalacheck = "0.3.0"
 val newtypeVersion = "0.4.4"
-val refinedVersion = "0.9.15"
-val scalaTestVersion = "3.2.2"
-val weaverVersion = "0.4.3"
+val refinedVersion = "0.9.17"
+val squantsVersion = "1.7.0"
+val weaverVersion = "0.5.0"
 
 libraryDependencies ++= Seq(
   compilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full),
@@ -27,8 +27,7 @@ libraryDependencies ++= Seq(
   "io.estatico" %% "newtype" % newtypeVersion,
   "eu.timepit" %% "refined-cats" % refinedVersion,
   "eu.timepit" %% "refined-scalacheck" % refinedVersion % Test,
-  "org.scalatest" %% "scalatest" % scalaTestVersion % Test,
-  "org.typelevel" %% "squants" % "1.7.0",
+  "org.typelevel" %% "squants" % squantsVersion,
   "com.disneystreaming" %% "weaver-framework" % weaverVersion % Test,
   "com.disneystreaming" %% "weaver-scalacheck" % weaverVersion % Test
 )
